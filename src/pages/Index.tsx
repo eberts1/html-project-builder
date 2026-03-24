@@ -1,16 +1,26 @@
-// Update this page (the content is just a fallback if you fail to update the page)
+import { useState } from 'react';
+import Topbar from '@/components/layout/Topbar';
+import Dashboard from '@/pages/Dashboard';
+import LeiloesPage from '@/pages/LeiloesPage';
+import ArquivosPage from '@/pages/ArquivosPage';
+import ProjetosPage from '@/pages/ProjetosPage';
+import CRMPage from '@/pages/CRMPage';
+import MarketingPage from '@/pages/MarketingPage';
 
-// IMPORTANT: Fully REPLACE this with your own code
-const PlaceholderIndex = () => {
-  // PLACEHOLDER: Replace this entire return statement with the user's app.
-  // The inline background color is intentionally not part of the design system.
+const Index = () => {
+  const [activePage, setActivePage] = useState('dashboard');
+
   return (
-    <div className="flex min-h-screen items-center justify-center" style={{ backgroundColor: '#fcfbf8' }}>
-      <img data-lovable-blank-page-placeholder="REMOVE_THIS" src="/placeholder.svg" alt="Your app will live here!" />
+    <div className="min-h-screen bg-background">
+      <Topbar activePage={activePage} onPageChange={setActivePage} />
+      {activePage === 'dashboard' && <Dashboard onNavigate={setActivePage} />}
+      {activePage === 'leiloes' && <LeiloesPage />}
+      {activePage === 'arquivos' && <ArquivosPage />}
+      {activePage === 'projetos' && <ProjetosPage />}
+      {activePage === 'crm' && <CRMPage />}
+      {activePage === 'marketing' && <MarketingPage />}
     </div>
   );
 };
-
-const Index = PlaceholderIndex;
 
 export default Index;
