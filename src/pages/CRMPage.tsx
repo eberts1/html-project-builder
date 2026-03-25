@@ -1,6 +1,12 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { CRM_FUNNELS, type CrmFunnel, type CrmDeal } from '@/data/mockData';
 import { fmtValorShort } from '@/lib/formatters';
+import NewDealDialog from '@/components/crm/NewDealDialog';
+import DealCard from '@/components/crm/DealCard';
+
+function tempClass(t: string) {
+  return t === 'quente' ? 'bg-bula-red-bg text-bula-red' : t === 'morno' ? 'bg-amber-bg text-amber' : 'bg-bula-blue-bg text-bula-blue';
+}
 
 export default function CRMPage() {
   const [funnels, setFunnels] = useState<CrmFunnel[]>(() => JSON.parse(JSON.stringify(CRM_FUNNELS)));
@@ -8,6 +14,9 @@ export default function CRMPage() {
   const [viewMode, setViewMode] = useState<'kanban' | 'list'>('kanban');
   const [filterPerson, setFilterPerson] = useState('todos');
   const [selectedDeal, setSelectedDeal] = useState<number | null>(null);
+  const [newDealOpen, setNewDealOpen] = useState(false);
+  const [dragOverStage, setDragOverStage] = useState<string | null>(null);
+  const dragDealId = useRef<number | null>(null);
 
   const funnel = funnels.find(f => f.id === activeFunnel)!;
   const deals = filterPerson === 'todos' ? funnel.deals : funnel.deals.filter(d => d.resp.n === filterPerson);
@@ -18,15 +27,58 @@ export default function CRMPage() {
   const ticketMedio = activeDeals.length ? Math.round(valorTotal / activeDeals.length) : 0;
 
   const deal = selectedDeal !== null ? funnel.deals.find(d => d.id === selectedDeal) : null;
-
   const people = ['todos', 'Bulinha', 'Peralta', 'Leo'];
 
-  function tempClass(t: string) {
-    return t === 'quente' ? 'bg-bula-red-bg text-bula-red' : t === 'morno' ? 'bg-bula-amber-bg text-bula-amber' : 'bg-bula-blue-bg text-bula-blue';
+  // --- Drag and Drop ---
+  function handleDragStart(_e: React.DragEvent, dealId: number) {
+    dragDealId.current = dealId;
+  }
+
+  function handleDragOver(e: React.DragEvent, stageId: string) {
+    e.preventDefault();
+    setDragOverStage(stageId);
+  }
+
+  function handleDragLeave() {
+    setDragOverStage(null);
+  }
+
+  function handleDrop(e: React.DragEvent, targetStage: string) {
+    e.preventDefault();
+    setDragOverStage(null);
+    const id = dragDealId.current;
+    if (id === null) return;
+
+    setFunnels(prev => prev.map(f => {
+      if (f.id !== activeFunnel) return f;
+      const dealIdx = f.deals.findIndex(d => d.id === id);
+      if (dealIdx === -1 || f.deals[dealIdx].stage === targetStage) return f;
+      const updated = [...f.deals];
+      const oldStage = updated[dealIdx].stage;
+      updated[dealIdx] = {
+        ...updated[dealIdx],
+        stage: targetStage,
+        timeline: [
+          { type: 'Movido', date: new Date().toLocaleDateString('pt-BR'), text: `Movido de "${funnel.stages.find(s => s.id === oldStage)?.name}" para "${funnel.stages.find(s => s.id === targetStage)?.name}".` },
+          ...updated[dealIdx].timeline,
+        ],
+      };
+      return { ...f, deals: updated };
+    }));
+    dragDealId.current = null;
+  }
+
+  // --- Add new deal ---
+  function handleAddDeal(newDeal: CrmDeal) {
+    setFunnels(prev => prev.map(f => {
+      if (f.id !== activeFunnel) return f;
+      return { ...f, deals: [...f.deals, newDeal] };
+    }));
   }
 
   return (
     <div className="px-7 pt-7 pb-10 max-w-full">
+      {/* Header */}
       <div className="flex items-center gap-3 mb-5 flex-wrap">
         <div className="flex-1 min-w-0">
           <div className="text-xl font-bold">CRM de Vendas</div>
@@ -50,7 +102,7 @@ export default function CRMPage() {
           ))}
         </div>
 
-        <button className="bg-primary text-primary-foreground border-none py-2 px-5 rounded-lg text-xs font-semibold cursor-pointer flex items-center gap-1.5 hover:bg-gold-dark transition-colors">
+        <button onClick={() => setNewDealOpen(true)} className="bg-primary text-primary-foreground border-none py-2 px-5 rounded-lg text-xs font-semibold cursor-pointer flex items-center gap-1.5 hover:bg-gold-dark transition-colors">
           <span className="material-symbols-outlined text-[16px]">add</span> Novo Negócio
         </button>
       </div>
@@ -82,13 +134,21 @@ export default function CRMPage() {
         ))}
       </div>
 
+      {/* Kanban / List */}
       {viewMode === 'kanban' ? (
         <div className="flex gap-3.5 overflow-x-auto pb-4 items-start min-h-[calc(100vh-280px)]">
           {funnel.stages.map(stage => {
             const stDeals = deals.filter(d => d.stage === stage.id);
             const stVal = stDeals.reduce((s, d) => s + d.valor, 0);
+            const isOver = dragOverStage === stage.id;
             return (
-              <div key={stage.id} className="min-w-[280px] max-w-[320px] flex-1 bg-surface-2 rounded-xl flex flex-col">
+              <div
+                key={stage.id}
+                className={`min-w-[280px] max-w-[320px] flex-1 bg-surface-2 rounded-xl flex flex-col transition-all ${isOver ? 'ring-2 ring-primary/40 bg-gold-dim' : ''}`}
+                onDragOver={e => handleDragOver(e, stage.id)}
+                onDragLeave={handleDragLeave}
+                onDrop={e => handleDrop(e, stage.id)}
+              >
                 <div className="p-3 flex items-center gap-2 rounded-t-xl">
                   <div className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ background: stage.cor }} />
                   <span className="text-[13px] font-bold">{stage.name}</span>
@@ -97,32 +157,8 @@ export default function CRMPage() {
                   </span>
                 </div>
                 <div className="px-2.5 flex-1 flex flex-col gap-2.5 min-h-[40px] pb-2.5">
-                  {stDeals.map(deal => (
-                    <div key={deal.id} onClick={() => setSelectedDeal(deal.id)} className="bg-surface border border-border rounded-lg p-3.5 cursor-pointer transition-all hover:border-[rgba(200,169,110,0.25)] hover:shadow-[0_4px_12px_rgba(0,0,0,0.1)]">
-                      <div className="flex items-start justify-between gap-2 mb-2">
-                        <div>
-                          <div className="text-[13px] font-bold leading-snug">{deal.name}</div>
-                          <div className="text-[10px] text-t-3 mt-0.5 flex items-center gap-0.5">
-                            <span className="material-symbols-outlined text-[12px]">location_on</span>{deal.loc}
-                          </div>
-                        </div>
-                        <div className="text-[15px] font-extrabold text-primary whitespace-nowrap">
-                          <span className="text-[9px] font-normal">R$ </span>{fmtValorShort(deal.valor)}
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-2 mb-2.5">
-                        <span className="text-[10px] text-t-2 flex items-center gap-0.5">
-                          <span className="material-symbols-outlined text-[13px] text-t-4">phone</span>{deal.tel}
-                        </span>
-                        <span className={`text-[9px] font-semibold px-2 py-0.5 rounded ${tempClass(deal.temp)}`}>
-                          {deal.temp === 'quente' ? 'Quente' : deal.temp === 'morno' ? 'Morno' : 'Frio'}
-                        </span>
-                      </div>
-                      <div className="flex items-center justify-between text-[9px] text-t-4">
-                        <span className="flex items-center gap-0.5"><span className="material-symbols-outlined text-[12px]">schedule</span>{deal.dias} dias</span>
-                        <span className="w-6 h-6 bg-surface-3 rounded-full flex items-center justify-center text-[9px] font-semibold text-t-2">{deal.resp.i}</span>
-                      </div>
-                    </div>
+                  {stDeals.map(d => (
+                    <DealCard key={d.id} deal={d} onClick={() => setSelectedDeal(d.id)} onDragStart={handleDragStart} />
                   ))}
                 </div>
               </div>
@@ -152,7 +188,7 @@ export default function CRMPage() {
         </div>
       )}
 
-      {/* Deal Modal */}
+      {/* Deal Detail Modal */}
       {selectedDeal !== null && deal && (
         <>
           <div className="fixed inset-0 bg-[rgba(0,0,0,0.6)] z-[200]" onClick={() => setSelectedDeal(null)} />
@@ -229,6 +265,9 @@ export default function CRMPage() {
           </div>
         </>
       )}
+
+      {/* New Deal Dialog */}
+      <NewDealDialog open={newDealOpen} onOpenChange={setNewDealOpen} stages={funnel.stages} onSave={handleAddDeal} />
     </div>
   );
 }
