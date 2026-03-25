@@ -1,4 +1,6 @@
 import logoDark from '@/assets/logo/logo-dark.png';
+import logoLight from '@/assets/logo/logo-light.png';
+import { useTheme } from '@/hooks/use-theme';
 
 interface TopbarProps {
   activePage: string;
@@ -16,10 +18,15 @@ const NAV_ITEMS = [
 
 export default function Topbar({ activePage, onPageChange }: TopbarProps) {
   const today = new Date().toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' });
+  const { theme, toggleTheme } = useTheme();
 
   return (
     <div className="h-14 bg-surface border-b border-border flex items-center px-7 gap-3.5 sticky top-0 z-50">
-      <img src={logoDark} alt="Bula Assessoria Pecuária" className="h-8 object-contain" />
+      <img
+        src={theme === 'dark' ? logoDark : logoLight}
+        alt="Bula Assessoria Pecuária"
+        className="h-8 object-contain"
+      />
 
       <div className="flex h-full items-stretch gap-0.5 ml-2">
         {NAV_ITEMS.map(item => (
@@ -43,6 +50,16 @@ export default function Topbar({ activePage, onPageChange }: TopbarProps) {
       <span className="text-[11px] text-t-3 bg-surface-2 border border-border px-3 py-1 rounded-full hidden md:block">
         {today}
       </span>
+
+      <button
+        onClick={toggleTheme}
+        className="w-9 h-9 bg-surface-2 border border-border rounded-lg flex items-center justify-center cursor-pointer text-t-2 hover:text-t transition-colors"
+        title={theme === 'dark' ? 'Modo claro' : 'Modo escuro'}
+      >
+        <span className="material-symbols-outlined text-[18px]">
+          {theme === 'dark' ? 'light_mode' : 'dark_mode'}
+        </span>
+      </button>
 
       <div className="w-9 h-9 bg-surface-2 border border-border rounded-lg flex items-center justify-center cursor-pointer text-t-2 relative">
         <span className="material-symbols-outlined text-[18px]">notifications</span>
