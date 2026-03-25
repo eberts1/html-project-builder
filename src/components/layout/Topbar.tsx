@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import logoDark from '@/assets/logo/logo-dark.png';
 
 interface TopbarProps {
   activePage: string;
