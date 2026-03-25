@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import logoDark from '@/assets/logo/logo-dark.png';
 
 interface TopbarProps {
   activePage: string;
@@ -19,7 +19,7 @@ export default function Topbar({ activePage, onPageChange }: TopbarProps) {
 
   return (
     <div className="h-14 bg-surface border-b border-border flex items-center px-7 gap-3.5 sticky top-0 z-50">
-      <span className="text-xl font-bold text-primary tracking-tight">BULA</span>
+      <img src={logoDark} alt="Bula Assessoria Pecuária" className="h-8 object-contain" />
 
       <div className="flex h-full items-stretch gap-0.5 ml-2">
         {NAV_ITEMS.map(item => (
